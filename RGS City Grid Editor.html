@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RGS City Grid Editor 🏙️ v2.5 Beast 🐉</title>
+<style>
+:root {
+  --bg: #070a0c;
+  --panel: #11161c;
+  --accent: #00bfff;
+  --accent2: #16d0ff;
+  --line: #1b2229;
+  --road: #4a9ff7;
+  --empty: #0f141a;
+  --origin: #ff6b35;
+  --font: "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 1rem;
+  background: var(--bg);
+  color: #eaf2ff;
+  font-family: var(--font);
+  line-height: 1.4;
+  user-select: none;
+}
+
+h1 {
+  color: var(--accent);
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 1.5rem;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 10px rgba(0,191,255,0.2);
+}
+
+.container { max-width: 1200px; margin: auto; }
+
+.controls {
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+}
+
+.control-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.control-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+label {
+  font-weight: 600;
+  color: var(--accent2);
+  white-space: nowrap;
+}
+
+input[type="number"] {
+  background: var(--empty);
+  border: 1px solid var(--line);
+  color: #eaf2ff;
+  padding: 8px 10px;
+  border-radius: 6px;
+  width: 90px;
+  text-align: center;
+  font-size: 14px;
+}
+
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+button {
+  background: var(--accent);
+  border: none;
+  color: #011;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+button:hover { background: var(--accent2); transform: translateY(-1px); }
+button:active { transform: translateY(0); }
+
+.button-group { display: flex; gap: 10px; flex-wrap: wrap; }
+
+#grid-wrapper {
+  perspective: 1200px;
+  transition: transform 0.4s ease;
+}
+
+#grid {
+  display: grid;
+  justify-content: center;
+  gap: 1px;
+  background: var(--line);
+  padding: 6px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  transform-style: preserve-3d;
+  transition: transform 0.4s ease;
+}
+
+.cell {
+  width: 32px;
+  height: 32px;
+  background: var(--empty);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.cell:hover { transform: scale(1.1); z-index: 10; }
+
+.cell.road {
+  background: var(--road);
+  box-shadow: 0 0 8px rgba(0,191,255,0.4);
+  color: #011;
+}
+
+.cell.origin {
+  background: var(--origin);
+  box-shadow: 0 0 12px rgba(255,107,53,0.6);
+  color: #fff;
+}
+
+.cell.road.origin {
+  background: linear-gradient(45deg, var(--road), var(--origin));
+}
+
+.output-section {
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+}
+
+#jsonOutput {
+  background: var(--empty);
+  border: 1px solid var(--line);
+  color: #eaf2ff;
+  padding: 15px;
+  border-radius: 8px;
+  font-family: 'Consolas','Monaco',monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  width: 100%;
+  min-height: 200px;
+  resize: vertical;
+  white-space: pre;
+  overflow: auto;
+}
+
+.stats {
+  background: var(--empty);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 15px;
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.stat-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.stat-value { font-size: 18px; font-weight: bold; color: var(--accent); }
+.stat-label { font-size: 12px; color: #aaa; }
+
+.legend {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+  justify-content: center;
+}
+
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.legend-color { width: 16px; height: 16px; border-radius: 3px; }
+
+.new-section { margin-top: 15px; padding: 12px; border-radius: 8px; background: #11161c; }
+.new-section label { font-weight: 600; }
+
+#groundInputs { display: none; gap: 10px; flex-wrap: wrap; margin-top: 5px; }
+
+@media (max-width: 768px) {
+  .control-group { flex-direction: column; align-items: flex-start; }
+  .button-group { justify-content: center; width: 100%; }
+  .cell { width: 28px; height: 28px; }
+  #groundInputs { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>RGS City Grid Editor 🏙️ v2.5 Beast 🐉</h1>
+
+<div class="controls">
+  <div class="control-group">
+    <div class="control-item">
+      <label>Grid Size:</label>
+      <input type="number" id="gridX" min="1" max="50" value="10">
+      <span>×</span>
+      <input type="number" id="gridY" min="1" max="50" value="10">
+    </div>
+    <div class="control-item">
+      <label>Cell Size:</label>
+      <input type="number" id="cellSize" min="0.1" max="100" step="0.1" value="160.0">
+    </div>
+    <div class="control-item">
+      <label>Y Position:</label>
+      <input type="number" id="yPosition" min="-100" max="200" step="0.1" value="31.0">
+    </div>
+    <div class="control-item">
+      <label>Rotation Y°:</label>
+      <input type="number" id="rotationY" min="0" max="359" step="1" value="0">
+    </div>
+  </div>
+
+  <div class="control-group">
+    <div class="control-item">
+      <input type="checkbox" id="setOrigin">
+      <label for="setOrigin">Set Origin Marker</label>
+    </div>
+    <br>
+    <div class="control-item">
+      <input type="checkbox" id="destroyCity">
+      <label for="destroyCity">Destroy Official City</label>
+    </div>
+    <div class="control-item">
+      <input type="checkbox" id="addGround">
+      <label for="addGround">Add Ground</label>
+    </div>
+    <div class="control-item" id="groundInputs">
+      <label>Ground X:</label><input type="number" id="groundX" value="0">
+      <label>Y:</label><input type="number" id="groundY" value="0">
+      <label>Z:</label><input type="number" id="groundZ" value="0">
+    </div>
+    <br>
+    <div class="control-item">
+      <label>Player X:</label>
+      <input type="number" id="playerX" value="0">
+      <label>Y:</label>
+      <input type="number" id="playerY" value="32">
+      <label>Z:</label>
+      <input type="number" id="playerZ" value="0">
+    </div>
+    <br>
+    
+    <div class="button-group">
+      <button id="createGrid">🧱 Create Grid</button>
+      <button id="clearGrid">🧹 Clear Grid</button>
+      <button id="generateJson">⚙️ Generate JSON</button>
+      <button id="copyJson">📋 Copy</button>
+      <button id="downloadJson">💾 Download</button>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-color" style="background: var(--empty);"></div><span>Empty</span></div>
+  <div class="legend-item"><div class="legend-color" style="background: var(--road);"></div><span>Road</span></div>
+  <div class="legend-item"><div class="legend-color" style="background: var(--origin);"></div><span>Origin (0,0)</span></div>
+</div>
+
+<div id="grid-wrapper">
+  <div id="grid"></div>
+</div>
+
+<div class="output-section">
+  <div class="stats">
+    <div class="stat-item"><div class="stat-value" id="totalRoads">0</div><div class="stat-label">Roads</div></div>
+    <div class="stat-item"><div class="stat-value" id="straightCount">0</div><div class="stat-label">S1 (Straight)</div></div>
+    <div class="stat-item"><div class="stat-value" id="cornerCount">0</div><div class="stat-label">S2 (Corner)</div></div>
+    <div class="stat-item"><div class="stat-value" id="tjunctionCount">0</div><div class="stat-label">S3 (T-Junction)</div></div>
+    <div class="stat-item"><div class="stat-value" id="crossCount">0</div><div class="stat-label">S4 (Cross)</div></div>
+  </div>
+  <textarea id="jsonOutput" readonly placeholder="Click 'Generate JSON' to see the road data..."></textarea>
+</div>
+</div>
+
+<script>
+document.getElementById("addGround").addEventListener("change", (e) => {
+  document.getElementById("groundInputs").style.display = e.target.checked ? "flex" : "none";
+});
+
+class RGSCityGridEditor {
+  constructor() {
+    this.gridContainer = document.getElementById("grid");
+    this.gridWrapper = document.getElementById("grid-wrapper");
+    this.gridData = [];
+    this.originX = null;
+    this.originY = null;
+    this.isSettingOrigin = false;
+
+    this.initListeners();
+    this.createGrid(10, 10);
+  }
+
+  initListeners() {
+    document.getElementById("createGrid").onclick = () => this.handleCreateGrid();
+    document.getElementById("clearGrid").onclick = () => this.clearGrid();
+    document.getElementById("generateJson").onclick = () => this.generateJSON();
+    document.getElementById("copyJson").onclick = () => this.copyJSON();
+    document.getElementById("downloadJson").onclick = () => this.downloadJSON();
+
+    document.getElementById("setOrigin").onchange = (e) => {
+      this.isSettingOrigin = e.target.checked;
+      this.updateCursor();
+    };
+
+    // Live rotation preview
+    document.getElementById("rotationY").addEventListener("input", (e) => {
+      const rot = parseFloat(e.target.value) || 0;
+      this.gridWrapper.style.transform = `rotateZ(${rot}deg)`;
+    });
+  }
+
+  handleCreateGrid() {
+    const cols = parseInt(document.getElementById("gridX").value);
+    const rows = parseInt(document.getElementById("gridY").value);
+    if (cols > 0 && rows > 0 && cols <= 50 && rows <= 50) this.createGrid(cols, rows);
+    else alert("Please enter valid grid dimensions (1–50)");
+  }
+
+  createGrid(cols, rows) {
+    this.gridContainer.innerHTML = "";
+    this.gridContainer.style.gridTemplateColumns = `repeat(${cols}, 32px)`;
+    this.gridData = [];
+    this.originX = this.originY = null;
+
+    for (let y = 0; y < rows; y++) {
+      const row = [];
+      for (let x = 0; x < cols; x++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.dataset.x = x;
+        cell.dataset.y = y;
+        cell.onclick = () => this.handleCell(x, y, cell);
+        this.gridContainer.appendChild(cell);
+        row.push({ isRoad: false, isOrigin: false, roadType: null });
+      }
+      this.gridData.push(row);
+    }
+    this.updateStats();
+  }
+
+  updateCursor() {
+    this.gridContainer.querySelectorAll(".cell").forEach(c => c.style.cursor = this.isSettingOrigin ? "crosshair" : "pointer");
+  }
+
+  handleCell(x, y, el) {
+    if (this.isSettingOrigin) this.setOrigin(x, y);
+    else this.toggleRoad(x, y, el);
+  }
+
+  setOrigin(x, y) {
+    if (this.originX !== null && this.originY !== null) {
+      this.gridData[this.originY][this.originX].isOrigin = false;
+      const prev = this.gridContainer.querySelector(`[data-x="${this.originX}"][data-y="${this.originY}"]`);
+      if (prev) prev.classList.remove("origin");
+    }
+    this.originX = x; this.originY = y;
+    this.gridData[y][x].isOrigin = true;
+    const el = this.gridContainer.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+    el.classList.add("origin"); el.textContent = "⭕";
+    this.isSettingOrigin = false;
+    document.getElementById("setOrigin").checked = false;
+    this.updateCursor();
+  }
+
+  toggleRoad(x, y, el) {
+    const d = this.gridData[y][x];
+    d.isRoad = !d.isRoad;
+    if (d.isRoad) el.classList.add("road");
+    else { el.classList.remove("road"); el.textContent = d.isOrigin ? "⭕" : ""; }
+    this.updateRoadTypes(); this.updateStats();
+  }
+
+  clearGrid() {
+    this.gridData.forEach((r, y) => r.forEach((c, x) => {
+      c.isRoad = false; c.roadType = null;
+      const el = this.gridContainer.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+      el.classList.remove("road"); el.textContent = c.isOrigin ? "⭕" : "";
+    }));
+    this.updateStats(); document.getElementById("jsonOutput").textContent = "";
+  }
+
+  getNeighbors(x, y) {
+    const dirs = [
+      { dx: 0, dy: -1, name: "N" },
+      { dx: 1, dy: 0, name: "E" },
+      { dx: 0, dy: 1, name: "S" },
+      { dx: -1, dy: 0, name: "W" }
+    ];
+    return dirs.map(d => {
+      const nx = x + d.dx, ny = y + d.dy;
+      const has = nx >= 0 && nx < this.gridData[0].length && ny >= 0 && ny < this.gridData.length && this.gridData[ny][nx].isRoad;
+      return { ...d, has };
+    });
+  }
+
+  updateRoadTypes() {
+    this.gridData.forEach((r, y) => r.forEach((c, x) => {
+      if (!c.isRoad) return;
+      const n = this.getNeighbors(x, y);
+      const count = n.filter(v => v.has).length;
+      if (count <= 1) c.roadType = "S1";
+      else if (count === 2) {
+        const straight = (n[0].has && n[2].has) || (n[1].has && n[3].has);
+        c.roadType = straight ? "S1" : "S2";
+      } else if (count === 3) c.roadType = "S3";
+      else c.roadType = "S4";
+      const el = this.gridContainer.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+      el.textContent = c.isOrigin ? "⭕" : c.roadType.replace("S", "");
+    }));
+  }
+
+  calcPos(gx, gy) {
+    const size = parseFloat(document.getElementById("cellSize").value) || 10.0;
+    const ox = this.originX ?? 0, oy = this.originY ?? 0;
+    return { x: parseFloat(((gx - ox) * size).toFixed(1)), z: parseFloat(((oy - gy) * size).toFixed(1)) };
+  }
+
+  calcRot(x, y, t) {
+    const global = parseFloat(document.getElementById("rotationY").value) || 0;
+    const n = this.getNeighbors(x, y).filter(v => v.has).map(v => v.name);
+    let local = 0;
+    if (t === "S1") {
+      if (n.includes("N") && n.includes("S")) local = 0;
+      else if (n.includes("E") && n.includes("W")) local = 90;
+    } else if (t === "S2") {
+      if (n.includes("E") && n.includes("N")) local = 0;
+      else if (n.includes("E") && n.includes("S")) local = 90;
+      else if (n.includes("W") && n.includes("S")) local = 180;
+      else if (n.includes("W") && n.includes("N")) local = 270;
+    } else if (t === "S3") {
+      if (!n.includes("S")) local = 0;
+      else if (!n.includes("W")) local = 90;
+      else if (!n.includes("N")) local = 180;
+      else if (!n.includes("E")) local = 270;
+    }
+    return (local + global) % 360;
+  }
+
+  uuid() {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0, v = c === "x" ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  generateJSON() {
+    const yVal = parseFloat(document.getElementById("yPosition").value) || 31.0;
+    const roads = [];
+
+    // Add city roads
+    this.gridData.forEach((r, y) => r.forEach((c, x) => {
+      if (!c.isRoad) return;
+      const pos = this.calcPos(x, y);
+      const rot = this.calcRot(x, y, c.roadType);
+      roads.push({
+        name: `${c.roadType}_${this.uuid()}`,
+        position: { x: pos.x, y: yVal, z: pos.z },
+        Rotation: [{ x: 0.0, y: rot, z: 0.0 }]
+      });
+    }));
+
+    // Optional: Destroy official city
+    if (document.getElementById("destroyCity").checked) {
+      roads.push({
+        name: "CityDestroy",
+        position: { x: 0, y: 0, z: 0 },
+        Rotation: [{ x: 0, y: 0, z: 0 }]
+      });
+    }
+
+    // Player position
+    const px = parseFloat(document.getElementById("playerX").value) || 0;
+    const py = parseFloat(document.getElementById("playerY").value) || (yVal + 1);
+    const pz = parseFloat(document.getElementById("playerZ").value) || 0;
+    roads.push({
+      name: `PlayerRGS_${this.uuid()}`,
+      position: { x: px, y: py, z: pz },
+      Rotation: [{ x: 0, y: 0, z: 0 }]
+    });
+
+    // Optional ground
+    if (document.getElementById("addGround").checked) {
+      const gx = parseFloat(document.getElementById("groundX").value) || 0;
+      const gy = parseFloat(document.getElementById("groundY").value) || 0;
+      const gz = parseFloat(document.getElementById("groundZ").value) || 0;
+      roads.push({
+        name: `SFourty_${this.uuid()}`,
+        position: { x: gx, y: gy, z: gz },
+        Rotation: [{ x: 0, y: 0, z: 0 }]
+      });
+    }
+
+    const js = JSON.stringify({ Data: roads }, null, 2);
+    document.getElementById("jsonOutput").textContent = js;
+    return js;
+  }
+
+  copyJSON() {
+    const out = document.getElementById("jsonOutput");
+    if (out.textContent.trim() === "") this.generateJSON();
+    navigator.clipboard.writeText(out.textContent).then(() => {
+      const btn = document.getElementById("copyJson");
+      const txt = btn.textContent;
+      btn.textContent = "✅ Copied!";
+      setTimeout(() => (btn.textContent = txt), 2000);
+    });
+  }
+
+  downloadJSON() {
+    let c = document.getElementById("jsonOutput").textContent;
+    if (c.trim() === "") c = this.generateJSON();
+    const blob = new Blob([c], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "rgs_city_grid.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  updateStats() {
+    let total = 0, s1 = 0, s2 = 0, s3 = 0, s4 = 0;
+    this.gridData.forEach(r => r.forEach(c => {
+      if (!c.isRoad) return;
+      total++;
+      switch (c.roadType) {
+        case "S1": s1++; break;
+        case "S2": s2++; break;
+        case "S3": s3++; break;
+        case "S4": s4++; break;
+      }
+    }));
+    document.getElementById("totalRoads").textContent = total;
+    document.getElementById("straightCount").textContent = s1;
+    document.getElementById("cornerCount").textContent = s2;
+    document.getElementById("tjunctionCount").textContent = s3;
+    document.getElementById("crossCount").textContent = s4;
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => new RGSCityGridEditor());
+</script>
+</body>
+</html>
